@@ -1,6 +1,7 @@
 use crossterm::{
 	cursor, 
-	terminal::{self, ClearType},
+	terminal::{self, ClearType,enable_raw_mode, disable_raw_mode},
+	event::{self, Event, KeyCode},
 	ExecutableCommand,
 	};
 
@@ -55,7 +56,7 @@ impl Default for Crab{
 
 fn main(){
 
-
+	let _ = enable_raw_mode();
 
 	let rows = 30;
 	let collumns = 120;
@@ -86,9 +87,27 @@ fn main(){
 
 
 	}
+	
 
-	while 1 {
-	// this is the game loop
+	loop{
+	// this is the main game loop
+
+
+	if event::poll(Duration::from_millis(0)).unwrap_or(false) {
+		if let Ok(Event::Key(key)) = event::read() {
+			match key.code{
+				KeyCode::Char('q') => break,
+				KeyCode::Left => {},
+				KeyCode::Right => {},
+				KeyCode::Up => {},
+				KeyCode::Down => {},
+				_ => {},
+
+			}	
+
+		}
+
+	}
 
 }
 
@@ -101,6 +120,6 @@ fn main(){
 
 
 
-
+	let _ = disable_raw_mode();
 
 }
