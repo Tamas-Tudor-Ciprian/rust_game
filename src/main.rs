@@ -6,10 +6,10 @@ use crossterm::{
 	};
 
 
-use std::io::{stdout, Write};
+use std::io::{stdout, Write,Stdout};
 use std::thread::sleep;
 use std::time::Duration;
-
+use std::time::Instant;
 
 
 
@@ -47,12 +47,53 @@ impl Default for Crab{
 
 
 	fn default() -> Self{
-		Self{position: Position {x : 10, y: 10},
+		Self{position: Position {x : 10, y: 20},
 		emoji:'🦀',
 
 
 		} }
 }
+
+
+
+
+
+fn display_framerate(out : &mut Stdout, start_time : &mut Instant){
+
+
+	
+	let mut time_now = Instant::now();
+
+	let elapsed_time = *start_time - time_now;
+
+
+	*start_time = time_now;
+
+	let fps = 1.0 / elapsed_time.as_secs_f64();
+
+
+	out.execute(cursor::MoveTo(0,0)).unwrap();
+
+	write!(out,"        ");
+
+
+	out.execute(cursor::MoveTo(0,0)).unwrap();
+
+
+	write!(out,"FPS:{}",fps);
+
+
+
+
+	}
+
+
+
+
+
+
+
+
 
 fn main(){
 
@@ -74,33 +115,42 @@ fn main(){
 	stdout.execute(terminal::Clear(ClearType::All)).unwrap();
 
 
-	for i in 0..50 {
-		//this is just a test
-		stdout.execute(cursor::MoveTo(0,0)).unwrap();
-		stdout.execute(terminal::Clear(ClearType::All)).unwrap();
-
-
-		write!(stdout, "Frame{}",i).unwrap();
-		stdout.flush().unwrap();
 
 		sleep(Duration::from_millis(50));
 
 
-	}
-	
+
+
+
+	let mut crab : Crab = Crab::default();
+
+	stdout.execute(cursor::MoveTo(crab.position.x.try_into().unwrap(),crab.position.y.try_into().unwrap())).unwrap();
+	write!(stdout,"{}",crab.emoji).unwrap();
+	stdout.flush().unwrap();
 
 	loop{
 	// this is the main game loop
 
 
-	if event::poll(Duration::from_millis(0)).unwrap_or(false) {
+	if event::poll(Duration::from_millis(500)).unwrap_or(false) {
 		if let Ok(Event::Key(key)) = event::read() {
 			match key.code{
 				KeyCode::Char('q') => break,
-				KeyCode::Left => {},
-				KeyCode::Right => {},
-				KeyCode::Up => {},
-				KeyCode::Down => {},
+				KeyCode::Left => {
+					crab.position.x -= 1;
+					stdout.execute(cursor::MoveTo(crab.position.x.try_into().unwrap(),crab.position.y.try_into().unwrap())).unwrap();
+
+					write!(stdout,"{}",crab.emoji).unwrap();
+					stdout.flush().unwrap();
+					},
+				KeyCode::Right => {
+					crab.position.x +=1;
+					stdout.execute(cursor::MoveTo(crab.position.x.try_into().unwrap(),crab.position.y.try_into().unwrap())).unwrap();
+					write!(stdout,"{}",crab.emoji).unwrap();
+					stdout.flush().unwrap();
+
+
+					},
 				_ => {},
 
 			}	
@@ -108,6 +158,9 @@ fn main(){
 		}
 
 	}
+
+		//I will attempt to have some logic to display the frame rate here
+
 
 }
 
