@@ -34,7 +34,6 @@ struct Position{
 }
 
 
-
 struct Crab {
 	position : Position,
 	speed : f64,
@@ -46,18 +45,42 @@ impl Default for Crab{
 
 
 	fn default() -> Self{
-		Self{position: Position {x : 10.0, y: 20.0},
-		speed : 0.25,
+		Self{position: Position {x : 10.0, y: (SCREEN_MEASURES.1 as f64 - 1.0)},
+		speed : 1.0,
 		emoji:'🦀',
 	} }
 }
 
 
+struct Fish {
+	position : Position,
+	speed : f64,
+	emoji : char,
+}
+
+impl Default for Fish{
+
+	fn default() -> Self{
+		Self{position: Position {x : 10.0, y :10.0},
+		speed : 1.0,
+		emoji : '🐟',
+		}
+
+	}
+}
+
+impl Fish{
+	fn move_down(&mut self){ 
+
+		self.position.y += 1.0;
+	
+		}
+}
+
 
 
 
 fn display_framerate(out : &mut Stdout, start_time : &mut Instant){
-
 
 	
 	let mut time_now = Instant::now();
@@ -87,6 +110,20 @@ fn display_speed(out : &mut Stdout,crab :&Crab){
 	write!(out,"SPEED:{}",crab.speed).unwrap();
 }
 
+
+fn display_score(out : &mut Stdout, score :&i64){
+
+
+
+	out.execute(cursor::MoveTo(SCREEN_MEASURES.0 as u16 + 3,25));
+
+	write!(out,"SCORE:{}",score).unwrap();
+
+
+}
+
+
+
 fn make_walls(out : &mut Stdout){
 
 
@@ -112,17 +149,29 @@ fn make_walls(out : &mut Stdout){
 }
 
 
+fn shoal_manager(shoal : &mut Vec<Fish>, score : &mut i64, crab : &Crab){
+	shoal.retain(|fish| { fish.position.y <= (SCREEN_MEASURES.1 - 1).try_into().unwrap()});
+
+	for fish in shoal{
+		fish.move_down();
+		}
+
+}
 
 fn main(){
 
 	let _ = enable_raw_mode();
 
-	let rows = 30;
-	let collumns = 120;
+
+	let mut shoal : Vec<Fish> = Vec::new();
+
+	shoal.push(Fish::default());
+
+
+	let mut score = 0;
 
 
 
-	let mut screen_buffer  = vec![vec![ScreenPixel::Empty;collumns];rows];
 
 	let mut stdout = stdout();
 
@@ -161,7 +210,6 @@ fn main(){
 					write!(stdout,"{}",crab.emoji).unwrap();
 					stdout.flush().unwrap();
 
-
 					},
 				KeyCode::Up => {},
 				KeyCode::Down => {},
@@ -178,6 +226,7 @@ fn main(){
 		let mut start_time = Instant::now();
 
 		display_framerate(&mut stdout,&mut start_time);
+		display_score(&mut stdout, &score);
 		
 
 }
