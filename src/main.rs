@@ -8,9 +8,16 @@ use crossterm::{
 
 use std::io::{stdout, Write,Stdout};
 use std::thread::sleep;
-use std::time::Duration;
-use std::time::Instant;
+use std::time::{Instant,Duration};
+use std::sync::atomic::{AtomicU64, Ordering};
 
+use rand::Rng;
+
+
+static DELTA_TIME_NS: AtomicU64 = AtomicU64::new(0);
+
+
+static NR_FISH : i32 = 4;
 
 
 const SCREEN_MEASURES: (i32,i32) = (60,30);
@@ -61,8 +68,9 @@ struct Fish {
 impl Default for Fish{
 
 	fn default() -> Self{
-		Self{position: Position {x : 10.0, y :10.0},
-		speed : 1.0,
+		let mut rng = rand::thread_rng();
+		Self{position: Position {x : rng.gen::<f64>() * 29.0 + 1.0, y :2.0},
+		speed : 2.0,
 		emoji : '🐟',
 		}
 
@@ -72,25 +80,15 @@ impl Default for Fish{
 impl Fish{
 	fn move_down(&mut self){ 
 
-		self.position.y += 1.0;
+		self.position.y += self.speed * get_delta_time().as_secs_f64();
 	
 		}
 }
 
 
-
-
 fn display_framerate(out : &mut Stdout, start_time : &mut Instant){
 
-	
-	let mut time_now = Instant::now();
-
-	let elapsed_time = time_now - *start_time;
-
-
-	*start_time = time_now;
-
-	let fps = 1.0 / elapsed_time.as_secs_f64();
+	let fps = 1.0 / get_delta_time().as_secs_f64();
 
 
 	out.execute(cursor::MoveTo(0,0)).unwrap();
@@ -118,15 +116,9 @@ fn display_score(out : &mut Stdout, score :&i64){
 	out.execute(cursor::MoveTo(SCREEN_MEASURES.0 as u16 + 3,25));
 
 	write!(out,"SCORE:{}",score).unwrap();
-
-
 }
 
-
-
 fn make_walls(out : &mut Stdout){
-
-
 	out.execute(cursor::MoveTo(0,1)).unwrap();
 	for _ in 0..SCREEN_MEASURES.0{
 		write!(out,"#").unwrap();
@@ -149,16 +141,65 @@ fn make_walls(out : &mut Stdout){
 }
 
 
-fn shoal_manager(shoal : &mut Vec<Fish>, score : &mut i64, crab : &Crab){
-	shoal.retain(|fish| { fish.position.y <= (SCREEN_MEASURES.1 - 1).try_into().unwrap()});
+fn shoal_manager(shoal : &mut Vec<Fish>, score : &mut i64, crab : &Crab, out : &mut Stdout){
 
-	for fish in shoal{
+
+
+
+
+	for fish in shoal.iter(){
+
+
+			erase_fish(out,fish);
+
+
+	}
+
+
+
+
+	shoal.retain(|fish| { fish.position.y <= (SCREEN_MEASURES.1 - 2).try_into().unwrap()});
+
+	for fish in shoal.iter_mut(){
 		fish.move_down();
 		}
 
+	if shoal.len() <= NR_FISH as usize{
+		shoal.push(Fish::default());
+	}
+	
+
 }
 
+fn display_shoal(out : &mut Stdout, shoal : &mut Vec<Fish>){
+	for fish in shoal{
+		out.execute(cursor::MoveTo(fish.position.x as u16, fish.position.y as u16)).unwrap();
+		write!(out,"{}",fish.emoji).unwrap();
+	}
+}
+
+
+fn erase_fish(out : &mut Stdout, fish : &Fish){
+	
+
+	out.execute(cursor::MoveTo(fish.position.x as u16, fish.position.y as u16)).unwrap();
+	write!(out," ").unwrap();
+
+	}
+
+
+fn get_delta_time() -> Duration {
+
+	Duration::from_nanos(DELTA_TIME_NS.load(Ordering::Relaxed))
+
+}
+
+
+
 fn main(){
+
+
+	let mut last = Instant::now();
 
 	let _ = enable_raw_mode();
 
@@ -191,6 +232,16 @@ fn main(){
 	make_walls(&mut stdout);
 
 	loop{
+
+	let now = Instant::now();
+	let dt = now.duration_since(last);
+	last = now;
+
+
+	DELTA_TIME_NS.store(dt.as_nanos() as u64, Ordering::Relaxed);
+
+
+
 	// this is the main game loop
 
 	if event::poll(Duration::from_millis(0)).unwrap_or(false) {
@@ -221,10 +272,14 @@ fn main(){
 
 	}
 
-		//I will attempt to have some logic to display the frame rate here
 		
-		let mut start_time = Instant::now();
+		shoal_manager(&mut shoal, &mut score, &crab, &mut stdout);
+		display_shoal(&mut stdout, &mut shoal);
+		
 
+
+		//this is where the display function calls go
+		let mut start_time = Instant::now();
 		display_framerate(&mut stdout,&mut start_time);
 		display_score(&mut stdout, &score);
 		
