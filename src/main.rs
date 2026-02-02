@@ -69,7 +69,7 @@ impl Default for Fish{
 
 	fn default() -> Self{
 		let mut rng = rand::thread_rng();
-		Self{position: Position {x : rng.gen::<f64>() * 29.0 + 1.0, y :2.0},
+		Self{position: Position {x : rng.gen::<f64>() * SCREEN_MEASURES.0 as f64 + 1.0, y :2.0},
 		speed : 2.0,
 		emoji : '🐟',
 		}
@@ -145,12 +145,16 @@ fn shoal_manager(shoal : &mut Vec<Fish>, score : &mut i64, crab : &Crab, out : &
 
 
 
+	for fish in shoal.iter_mut(){
 
 
-	for fish in shoal.iter(){
-
-
-			erase_fish(out,fish);
+			out.execute(cursor::MoveTo(fish.position.x as u16, fish.position.y as u16)).unwrap();
+			write!(out," ",).unwrap();
+			fish.move_down();
+			
+			if fish.position.y > (SCREEN_MEASURES.1 - 2).try_into().unwrap(){
+				write!(out,"{}",fish.emoji).unwrap();
+			}
 
 
 	}
@@ -171,21 +175,6 @@ fn shoal_manager(shoal : &mut Vec<Fish>, score : &mut i64, crab : &Crab, out : &
 
 }
 
-fn display_shoal(out : &mut Stdout, shoal : &mut Vec<Fish>){
-	for fish in shoal{
-		out.execute(cursor::MoveTo(fish.position.x as u16, fish.position.y as u16)).unwrap();
-		write!(out,"{}",fish.emoji).unwrap();
-	}
-}
-
-
-fn erase_fish(out : &mut Stdout, fish : &Fish){
-	
-
-	out.execute(cursor::MoveTo(fish.position.x as u16, fish.position.y as u16)).unwrap();
-	write!(out," ").unwrap();
-
-	}
 
 
 fn get_delta_time() -> Duration {
@@ -274,8 +263,6 @@ fn main(){
 
 		
 		shoal_manager(&mut shoal, &mut score, &crab, &mut stdout);
-		display_shoal(&mut stdout, &mut shoal);
-		
 
 
 		//this is where the display function calls go
