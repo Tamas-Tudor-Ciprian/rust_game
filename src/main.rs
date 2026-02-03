@@ -22,17 +22,7 @@ static NR_FISH : i32 = 4;
 
 const SCREEN_MEASURES: (i32,i32) = (60,30);
 
-#[derive(Clone)]
-enum ScreenPixel {
-
-
-	Crab,
-	Fish,
-	Wall,
-	Empty,
-
-}
-
+#[derive(Copy, Clone)]
 struct Position{
 
 	x:f64,
@@ -61,6 +51,7 @@ impl Default for Crab{
 
 struct Fish {
 	position : Position,
+	last_position: Position,
 	speed : f64,
 	emoji : char,
 }
@@ -69,7 +60,10 @@ impl Default for Fish{
 
 	fn default() -> Self{
 		let mut rng = rand::thread_rng();
-		Self{position: Position {x : rng.gen::<f64>() * SCREEN_MEASURES.0 as f64 + 1.0, y :2.0},
+		let position = Position { x : rng.gen::<f64>() * (SCREEN_MEASURES.0 as f64 - 2.0) + 1.0 , y : 2.0};
+		Self{
+		position,
+		last_position : position,
 		speed : 2.0,
 		emoji : '🐟',
 		}
@@ -78,9 +72,18 @@ impl Default for Fish{
 }
 
 impl Fish{
-	fn move_down(&mut self){ 
+	fn move_down(&mut self) -> bool{ 
 
 		self.position.y += self.speed * get_delta_time().as_secs_f64();
+
+		if self.last_position.y as u16 != self.position.y as u16 {
+
+			true
+
+		}else{
+			false
+
+		}
 	
 		}
 }
@@ -148,12 +151,14 @@ fn shoal_manager(shoal : &mut Vec<Fish>, score : &mut i64, crab : &Crab, out : &
 	for fish in shoal.iter_mut(){
 
 
-			out.execute(cursor::MoveTo(fish.position.x as u16, fish.position.y as u16)).unwrap();
-			write!(out," ",).unwrap();
-			fish.move_down();
-			
-			if fish.position.y > (SCREEN_MEASURES.1 - 2).try_into().unwrap(){
-				write!(out,"{}",fish.emoji).unwrap();
+			if fish.move_down(){
+				out.execute(cursor::MoveTo(fish.last_position.x as u16, fish.last_position.y as u16)).unwrap();
+				write!(out," ",).unwrap();
+				fish.last_position.y = fish.position.y;
+				if fish.position.y < (SCREEN_MEASURES.1 - 2).try_into().unwrap(){
+					out.execute(cursor::MoveTo(fish.position.x as u16, fish.position.y as u16)).unwrap();
+					write!(out,"{}",fish.emoji).unwrap();
+				}
 			}
 
 
@@ -184,7 +189,6 @@ fn get_delta_time() -> Duration {
 }
 
 
-
 fn main(){
 
 
@@ -199,8 +203,6 @@ fn main(){
 
 
 	let mut score = 0;
-
-
 
 
 	let mut stdout = stdout();
@@ -270,10 +272,7 @@ fn main(){
 		display_framerate(&mut stdout,&mut start_time);
 		display_score(&mut stdout, &score);
 		
-
 }
-
-
 
 
 //	stdout.execute(cursor::Show).unwrap();
