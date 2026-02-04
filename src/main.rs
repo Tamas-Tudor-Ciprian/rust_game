@@ -126,21 +126,21 @@ fn display_score(out : &mut Stdout, score :&i64){
 
 fn make_walls(out : &mut Stdout){
 	out.execute(cursor::MoveTo(0,1)).unwrap();
-	for _ in 0..SCREEN_MEASURES.0{
-		write!(out,"#").unwrap();
+	for _ in 0..SCREEN_MEASURES.0/2{
+		write!(out,"🧱").unwrap();
 	}
 
 	out.execute(cursor::MoveTo(0,SCREEN_MEASURES.1.try_into().unwrap())).unwrap();
-	for _ in 0..SCREEN_MEASURES.0{
-		write!(out,"#").unwrap();
+	for _ in 0..SCREEN_MEASURES.0/2{
+		write!(out,"🧱").unwrap();
 	}
 
 	for left_rail in 1..=SCREEN_MEASURES.1{	
 	
 		out.execute(cursor::MoveTo(0,left_rail.try_into().unwrap())).unwrap();
-		write!(out,"#").unwrap();
+		write!(out,"🧱").unwrap();
 		out.execute(cursor::MoveTo(SCREEN_MEASURES.0.try_into().unwrap(),left_rail.try_into().unwrap())).unwrap();
-		write!(out,"#").unwrap();
+		write!(out,"🧱").unwrap();
 	
 	}
 		
@@ -150,10 +150,10 @@ fn you_won(out: &mut Stdout){
 
 
 	let win_screen = vec![
-				"#############",
-				"#  YOU WON! #",
-				"# CRAB RAVE #",
-				"#############",
+				"🪸🪸🪸🪸🪸🪸🪸🪸",
+				"🪸   YOU WON! 🪸",
+				"🪸  CRAB RAVE 🪸",
+				"🪸🪸🪸🪸🪸🪸🪸🪸",
 				
 
 
