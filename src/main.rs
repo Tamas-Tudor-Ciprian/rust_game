@@ -3,6 +3,7 @@ use crossterm::{
 	terminal::{self, ClearType,enable_raw_mode, disable_raw_mode},
 	event::{self, Event, KeyCode},
 	ExecutableCommand,
+	style::*,
 	};
 
 
@@ -63,7 +64,7 @@ impl Default for Fish{
 
 	fn default() -> Self{
 		let mut rng = rand::thread_rng();
-		let position = Position { x : rng.gen::<f64>() * (SCREEN_MEASURES.0 as f64 - 2.0) + 1.0 , y : 2.0};
+		let position = Position { x : rng.gen::<f64>() * (SCREEN_MEASURES.0 as f64 - 3.0) + 2.0 , y : 2.0};
 		Self{
 		position,
 		last_position : position,
@@ -81,7 +82,6 @@ impl Fish{
 		self.position.y += self.speed * get_delta_time().as_secs_f64();
 
 		if self.last_position.y as u16 != self.position.y as u16 {
-
 			true
 
 		}else{
@@ -118,9 +118,10 @@ fn display_speed(out : &mut Stdout,crab :&Crab){
 
 fn display_score(out : &mut Stdout, score :&i64){
 
-	out.execute(cursor::MoveTo(SCREEN_MEASURES.0 as u16 + 3,25));
-
-	write!(out,"SCORE:{}",score).unwrap();
+	out.execute(cursor::MoveTo(SCREEN_MEASURES.0 as u16 + 9,25));
+	write!(out,"   ").unwrap();
+	out.execute(cursor::MoveTo(SCREEN_MEASURES.0 as u16 + 9, 25));
+	write!(out,"{}",score).unwrap();
 }
 
 fn make_walls(out : &mut Stdout){
@@ -145,6 +146,48 @@ fn make_walls(out : &mut Stdout){
 		
 }
 
+fn you_won(out: &mut Stdout){
+
+
+	let win_screen = vec![
+				"#############",
+				"#  YOU WON! #",
+				"# CRAB RAVE #",
+				"#############",
+				
+
+
+				];
+
+	let colors = [
+		Color::Red,
+		Color::Yellow,
+		Color::Green,
+		Color::Cyan,
+		Color::Blue,
+		Color::Magenta,
+		];
+	let mut i = 0;	
+
+		let mut rng = rand::thread_rng();
+		let color = colors[rng.gen::<usize>() % colors.len()];
+		out.execute(SetForegroundColor(color)).unwrap();
+	for line in win_screen{
+		out.execute(cursor::MoveTo((SCREEN_MEASURES.0/2 - 6) as u16, (SCREEN_MEASURES.1/2 + i) as u16)).unwrap();
+		write!(out,"{}",line);
+		out.flush().unwrap();
+		i += 1;
+	}
+
+
+	//this resets the color just in case
+	out.execute(SetForegroundColor(Color::White)).unwrap();
+
+	}
+
+
+
+
 
 fn shoal_manager(shoal : &mut Vec<Fish>, score : &mut i64, crab : &Crab, out : &mut Stdout){
 
@@ -156,40 +199,38 @@ fn shoal_manager(shoal : &mut Vec<Fish>, score : &mut i64, crab : &Crab, out : &
 			if fish.move_down(){
 				out.execute(cursor::MoveTo(fish.last_position.x as u16, fish.last_position.y as u16)).unwrap();
 				write!(out," ",).unwrap();
-				fish.last_position.y = fish.position.y;
-				if fish.position.y < (SCREEN_MEASURES.1 - 2).try_into().unwrap(){
-					out.execute(cursor::MoveTo(fish.position.x as u16, fish.position.y as u16)).unwrap();
-					write!(out,"{}",fish.emoji).unwrap();
-				} else {
-				// this is where the score logic goes
-				match (fish.position, crab.position) {
+				fish.last_position = fish.position;
+				out.execute(cursor::MoveTo(fish.position.x as u16, fish.position.y as u16)).unwrap();
+				write!(out,"\x08{}",fish.emoji).unwrap();
 
-				(Position { x: fx, y: fy}, Position{ x: cx, y:cy})
-
-				if (fx-cx).abs() < 0.5 && (fy-cy).abs() < 2.0 => {*score +=1;}
-
-				_=>{*score -=1;}
-
-
-				
 				}
 				
 
 
 				}
-			}
 
 
+
+	let first_fish = shoal.first().unwrap();
+	if shoal.first().unwrap().position.y >(SCREEN_MEASURES.1 - 2).try_into().unwrap(){
+		let x_diff = (first_fish.position.x - crab.position.x).abs();
+		let y_diff = (first_fish.position.y - crab.position.y).abs();
+		if x_diff < 2.0 && y_diff <2.0{
+		
+			*score += 1;
+
+		}else{
+			*score -=1;
+		}
+		out.execute(cursor::MoveTo(first_fish.position.x as u16,first_fish.position.y as u16)).unwrap();
+		write!(out," ");
+		shoal.remove(0);
 	}
 
 
+	out.execute(cursor::MoveTo((SCREEN_MEASURES.0+1) as u16,(SCREEN_MEASURES.1+1) as u16)).unwrap();
 
 
-	shoal.retain(|fish| { fish.position.y <= (SCREEN_MEASURES.1 - 2).try_into().unwrap()});
-
-	for fish in shoal.iter_mut(){
-		fish.move_down();
-		}
 
 
 	let time_since_last_fish = (Instant::now() -shoal.last().unwrap().timestamp).as_secs_f64();
@@ -223,6 +264,7 @@ fn main(){
 
 
 	let mut score = 0;
+	let mut old_score = 1;
 
 
 	let mut stdout = stdout();
@@ -240,6 +282,12 @@ fn main(){
 	stdout.flush().unwrap();
 
 
+	//this will put the score display, so that it does not update the whole word every time:
+
+	stdout.execute(cursor::MoveTo(SCREEN_MEASURES.0 as u16 + 3,25));
+	write!(stdout,"SCORE:");
+
+
 	make_walls(&mut stdout);
 
 	loop{
@@ -252,7 +300,6 @@ fn main(){
 	DELTA_TIME_NS.store(dt.as_nanos() as u64, Ordering::Relaxed);
 
 
-
 	// this is the main game loop
 
 	if event::poll(Duration::from_millis(0)).unwrap_or(false) {
@@ -260,17 +307,20 @@ fn main(){
 			match key.code{
 				KeyCode::Char('q') => break,
 				KeyCode::Left => {
-					crab.position.x -= crab.speed;
-					stdout.execute(cursor::MoveTo(crab.position.x as u16,crab.position.y as u16)).unwrap();
-
-					write!(stdout,"{}",crab.emoji).unwrap();
-					stdout.flush().unwrap();
+					if (crab.position.x - crab.speed) > 0 as f64{
+						crab.position.x -= crab.speed;
+						stdout.execute(cursor::MoveTo(crab.position.x as u16,crab.position.y as u16)).unwrap();
+						write!(stdout,"{}",crab.emoji).unwrap();
+						stdout.flush().unwrap();
+					}
 					},
 				KeyCode::Right => {
-					crab.position.x += crab.speed;
-					stdout.execute(cursor::MoveTo(crab.position.x as u16,crab.position.y as u16)).unwrap();
-					write!(stdout,"{}",crab.emoji).unwrap();
-					stdout.flush().unwrap();
+					if (crab.position.x + crab.speed) < SCREEN_MEASURES.0 as f64 - 1.0{
+						crab.position.x += crab.speed;
+						stdout.execute(cursor::MoveTo(crab.position.x as u16,crab.position.y as u16)).unwrap();
+						write!(stdout,"{}",crab.emoji).unwrap();
+						stdout.flush().unwrap();
+					}
 
 					},
 				KeyCode::Up => {},
@@ -290,15 +340,28 @@ fn main(){
 		//this is where the display function calls go
 		let mut start_time = Instant::now();
 		//display_framerate(&mut stdout,&mut start_time);
+		if old_score != score {
 		display_score(&mut stdout, &score);
+		old_score = score;
+
+		if score == 10{
+			
+			for _ in 0..500{	
+			you_won(&mut stdout);
+			sleep(Duration::from_millis(10));
+			}
+	
+			break;
+		}
+
+		}
 		
 }
 
-
-//	stdout.execute(cursor::Show).unwrap();
+	
+	//stdout.execute(cursor::Show).unwrap();
 	stdout.execute(terminal::LeaveAlternateScreen).unwrap();
 	terminal::disable_raw_mode().unwrap();
-
 
 
 	let _ = disable_raw_mode();
