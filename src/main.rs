@@ -19,6 +19,8 @@ static DELTA_TIME_NS: AtomicU64 = AtomicU64::new(0);
 
 static NR_FISH : i32 = 4;
 
+static FISH_SPAWN_DELAY : f64 = 2.0;
+
 
 const SCREEN_MEASURES: (i32,i32) = (60,30);
 
@@ -54,6 +56,7 @@ struct Fish {
 	last_position: Position,
 	speed : f64,
 	emoji : char,
+	timestamp :Instant,
 }
 
 impl Default for Fish{
@@ -66,6 +69,7 @@ impl Default for Fish{
 		last_position : position,
 		speed : 2.0,
 		emoji : '🐟',
+		timestamp : Instant::now(),
 		}
 
 	}
@@ -114,8 +118,6 @@ fn display_speed(out : &mut Stdout,crab :&Crab){
 
 fn display_score(out : &mut Stdout, score :&i64){
 
-
-
 	out.execute(cursor::MoveTo(SCREEN_MEASURES.0 as u16 + 3,25));
 
 	write!(out,"SCORE:{}",score).unwrap();
@@ -134,7 +136,7 @@ fn make_walls(out : &mut Stdout){
 
 	for left_rail in 1..=SCREEN_MEASURES.1{	
 	
-		out.execute(cursor::MoveTo(0,left_rail.try_into().unwrap())).unwrap();	
+		out.execute(cursor::MoveTo(0,left_rail.try_into().unwrap())).unwrap();
 		write!(out,"#").unwrap();
 		out.execute(cursor::MoveTo(SCREEN_MEASURES.0.try_into().unwrap(),left_rail.try_into().unwrap())).unwrap();
 		write!(out,"#").unwrap();
@@ -158,6 +160,22 @@ fn shoal_manager(shoal : &mut Vec<Fish>, score : &mut i64, crab : &Crab, out : &
 				if fish.position.y < (SCREEN_MEASURES.1 - 2).try_into().unwrap(){
 					out.execute(cursor::MoveTo(fish.position.x as u16, fish.position.y as u16)).unwrap();
 					write!(out,"{}",fish.emoji).unwrap();
+				} else {
+				// this is where the score logic goes
+				match (fish.position, crab.position) {
+
+				(Position { x: fx, y: fy}, Position{ x: cx, y:cy})
+
+				if (fx-cx).abs() < 0.5 && (fy-cy).abs() < 2.0 => {*score +=1;}
+
+				_=>{*score -=1;}
+
+
+				
+				}
+				
+
+
 				}
 			}
 
@@ -173,7 +191,9 @@ fn shoal_manager(shoal : &mut Vec<Fish>, score : &mut i64, crab : &Crab, out : &
 		fish.move_down();
 		}
 
-	if shoal.len() <= NR_FISH as usize{
+
+	let time_since_last_fish = (Instant::now() -shoal.last().unwrap().timestamp).as_secs_f64();
+	if shoal.len() <= NR_FISH as usize && time_since_last_fish > FISH_SPAWN_DELAY{
 		shoal.push(Fish::default());
 	}
 	
@@ -269,7 +289,7 @@ fn main(){
 
 		//this is where the display function calls go
 		let mut start_time = Instant::now();
-		display_framerate(&mut stdout,&mut start_time);
+		//display_framerate(&mut stdout,&mut start_time);
 		display_score(&mut stdout, &score);
 		
 }
